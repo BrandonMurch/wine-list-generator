@@ -23,18 +23,34 @@ function createWineList() {
     return headers.indexOf(headerString);
   }
 
-  function createCuvee(wine) {
+  function getFormattedName(wine) {
     const nameCell = wine[getHeaderIndex("Name")];
     const vintage = nameCell.match(/\d{4}/) || "";
+    // RegExp: matches all words between single quotations
     let name = nameCell.match(/(\')(.+)(\')/)[2];
+    // RegExp: matches all words between parenthesis
     const size = nameCell.match(/(\()(.+)(\))/);
     if (size) {
       name += " (" + size[2] + ")";
     }
-    SpreadsheetApp.getUi().alert(wine[getHeaderIndex("Grapes")].length);
+
+    return vintage + " " + name;
+  }
+
+  function getFormattedGrapes(wine) {
+    const grapes = wine[getHeaderIndex("Grapes")];
+    if (grapes.includes("/")) {
+      // RegExp: matches "/word" or "/word word" which is followed
+      // either by a "," or the end of line
+      return grapes.replace(/\/[\w ]+(?=(,|$))/g, "");
+    }
+    return grapes;
+  }
+
+  function createCuvee(wine) {
     return {
-      name: vintage + " " + name,
-      grapes: wine[getHeaderIndex("Grapes")],
+      name: getFormattedName(wine),
+      grapes: getFormattedGrapes(wine),
       price: wine[getHeaderIndex("Restaurant Price")],
       macerated: wine[getHeaderIndex("Type")] == "orange",
     };
@@ -257,9 +273,9 @@ function createWineList() {
     const table = templateBody.getChild(2).asTable();
     const template = {
       category: (textToInsert) => {
-        const template = templateBody.getChild(0).copy().replaceText("{{category}}", textToInsert);
+        const template = templateBody.getChild(0).copy().asParagraph().replaceText("{{category}}", textToInsert);
 
-        template.replaceText("{{category_maceration}}", textToInsert == "white & macerated" ? " ▴" : "");
+        template.asParagraph().replaceText("{{category_maceration}}", textToInsert == "white & macerated" ? " ▴" : "");
 
         return template;
       },
@@ -273,7 +289,7 @@ function createWineList() {
         const template = table.getRow(2).copy();
         template.replaceText("{{cuvee}}", name);
         template.replaceText("{{grapes}}", grapes);
-        template.replaceText("{{price}}", formatPrice(price));
+        template.replaceText("{{price}}", formatPrice(price).toString());
         template.replaceText("{{cuvee_maceration}}", macerated ? " ▴" : "");
         return template;
       },
