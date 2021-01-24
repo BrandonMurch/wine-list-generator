@@ -3,11 +3,11 @@ function createWineList() {
   const wineSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
   const templateId = "12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80";
   const folderId = "1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U";
-  const MAX_LINES = 58;
+  const MAX_LINES = 54;
   // Change these numbers if the font size changes.
   const CUVEE_SIZE = 9;
-  const COUNTRY_LINES = 18 / CUVEE_SIZE;
-  const REGION_LINES = 27 / CUVEE_SIZE;
+  const COUNTRY_LINES = 16 / CUVEE_SIZE;
+  const REGION_LINES = 21 / CUVEE_SIZE;
   const LINES_NEEDED = {
     // A new category should always be placed on a new page.
     category: 0,
@@ -175,13 +175,17 @@ function createWineList() {
 
   function appendRegion(region, writing, producers) {
     const { templates, document } = writing;
+    const producerNames = Object.keys(producers).sort();
+    if (willProducerExtendToNextPage(producers[producerNames[0]])) {
+      appendPageBreak(writing);
+    }
     let table = templates.table();
     const regionRow = templates.region(region);
     table.appendTableRow(regionRow);
     pageLineCounter += REGION_LINES;
-    const producerNames = Object.keys(producers).sort();
-    producerNames.forEach((producerName) => {
-      if (willProducerExtendToNextPage(producers[producerName])) {
+
+    producerNames.forEach((producerName, index) => {
+      if (index != 0 && willProducerExtendToNextPage(producers[producerName])) {
         appendLineToDocument(table, document);
         appendPageBreak(writing);
         table = templates.table();
