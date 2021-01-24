@@ -6,8 +6,8 @@ function createWineList() {
   const MAX_LINES = 54;
   // Change these numbers if the font size changes.
   const CUVEE_SIZE = 9;
-  const COUNTRY_LINES = 16 / CUVEE_SIZE;
-  const REGION_LINES = 21 / CUVEE_SIZE;
+  const COUNTRY_LINES = 21 / CUVEE_SIZE;
+  const REGION_LINES = 28 / CUVEE_SIZE;
   const LINES_NEEDED = {
     // A new category should always be placed on a new page.
     category: 0,
@@ -230,12 +230,13 @@ function createWineList() {
     const dataType = dataTypeStack.shift();
     const keys = getKeys(dataType, data);
     keys.forEach((key) => {
-      if (hasEndOfPageBeenReached(dataType)) {
-        appendPageBreak(writing);
-      }
-      current[dataType] = key;
-      const append = getAppendFunction(dataType);
       if (data[key]) {
+        if (hasEndOfPageBeenReached(dataType)) {
+          appendPageBreak(writing);
+        }
+        current[dataType] = key;
+        const append = getAppendFunction(dataType);
+
         append(key, writing, data[key]);
       }
       if (dataTypeStack.length > 0 && data[key]) {
@@ -323,10 +324,8 @@ function createWineList() {
 
   function appendLineToDocument(line, document) {
     if (line.getType() == "PARAGRAPH") {
-      pageLineCounter += 1;
       document.appendParagraph(line);
     } else if (line.getType() == "TABLE") {
-      pageLineCounter++;
       document.appendTable(line);
     }
   }
