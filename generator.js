@@ -4,7 +4,6 @@ function createWineList() {
   const templateId = "12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80";
   const folderId = "1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U";
   const MAX_LINES = 54;
-  // Change these numbers if the font size changes.
   const CUVEE_SIZE = 9;
   const COUNTRY_LINES = 21 / CUVEE_SIZE;
   const REGION_LINES = 28 / CUVEE_SIZE;
@@ -93,22 +92,24 @@ function createWineList() {
     if (wine[getHeaderIndex("Type")] == "not-wine" || wine[getHeaderIndex("Type")] == "fortified") {
       return false;
     }
-    return wine[getHeaderIndex("Wine List")];
+
+    const modifiedName = wine[getHeaderIndex("Name")].split('"').join("'");
+    return !outOfStockWines.includes(modifiedName);
   }
 
-  function loadWineIntoMapIfIncludedInWineList(wine, map) {
-    if (shouldWineGoOnList(wine)) {
-      readCounter++;
-      const cuvee = createCuvee(wine);
-      const stack = createStackForTrie(wine);
-      insertIntoTrie(map, stack, cuvee);
-    }
+  function loadWineIntoMap(wine, map) {
+    readCounter++;
+    const cuvee = createCuvee(wine);
+    const stack = createStackForTrie(wine);
+    insertIntoTrie(map, stack, cuvee);
   }
 
   function loadWinesIntoHashMap() {
     const wineMap = {};
     for (let i = 0; i < wineSheet.length; i++) {
-      loadWineIntoMapIfIncludedInWineList(wineSheet[i], wineMap);
+      if (shouldWineGoOnList(wineSheet[i])) {
+        loadWineIntoMap(wineSheet[i], wineMap);
+      }
     }
     return wineMap;
   }
@@ -366,18 +367,44 @@ function createWineList() {
     }
   }
 
-  function getOutOfStockWines() {
-    const promptResponse = SpreadsheetApp.getUi()
-      .prompt("Please enter the url of the out of stock items")
-      .getResponseText();
-    if (promptResponse) {
-      const outOfStockId = SpreadsheetApp.openByUrl(promptResponse).getId();
-      return Sheets.Spreadsheets.Values.get(outOfStockId, "A:ZZ");
-    }
-  }
-
-  const outOfStockWines = getOutOfStockWines();
+  const outOfStockWines = loadOutOfStockWines();
   const wines = loadWinesIntoHashMap();
   writeWinesToTemplate(wines);
   SpreadsheetApp.getActiveSpreadsheet().toast("100% completed");
+}
+
+function loadOutOfStockWines() {
+  const sheetUrl = SpreadsheetApp.getUi().prompt("Please enter the URL of the inventory sheet.").getResponseText();
+  if (!sheetUrl) {
+    throw new Error("URL was not entered.");
+  }
+
+  let outOfStockSheet;
+
+  try {
+    outOfStockSheet = SpreadsheetApp.openByUrl(sheetUrl);
+  } catch (error) {
+    throw new Error("URL not found");
+  }
+  const sheetHeaders = outOfStockSheet.getSheetValues(1, 1, 1, -1)[0];
+
+  function getHeaderIndex(headerString) {
+    return sheetHeaders.indexOf(headerString);
+  }
+  const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
+  let length = sheetValues.length;
+  let target = 2;
+  for (let i = 0; i < length; i++) {
+    if (sheetValues[i][getHeaderIndex("Cellar")] !== 0 || sheetValues[i][getHeaderIndex("Online Store")] !== 0) {
+      outOfStockSheet.deleteRow(target);
+    } else {
+      target++;
+    }
+  }
+
+  const outOfStockList = [];
+  outOfStockSheet.getSheetValues(2, getHeaderIndex("Title") + 1, -1, 1).forEach((item) => {
+    outOfStockList.push(item.toString());
+  });
+  return outOfStockList;
 }
