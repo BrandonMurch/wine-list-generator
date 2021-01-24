@@ -374,6 +374,16 @@ function createWineList() {
 }
 
 function loadOutOfStockWines() {
+  function getOutOfStockList(sheet, headers) {
+    const outOfStockList = [];
+    sheetValues.forEach((row) => {
+      if (row[sheetHeaders.indexOf("Cellar")] === 0 && row[sheetHeaders.indexOf("Online Store")] === 0) {
+        outOfStockList.push(row[sheetHeaders.indexOf("Title")].toString());
+      }
+    });
+    return outOfStockList;
+  }
+
   const sheetUrl = SpreadsheetApp.getUi().prompt("Please enter the URL of the inventory sheet.").getResponseText();
   if (!sheetUrl) {
     throw new Error("URL was not entered.");
@@ -387,16 +397,6 @@ function loadOutOfStockWines() {
     throw new Error("URL not found");
   }
   const sheetHeaders = outOfStockSheet.getSheetValues(1, 1, 1, -1)[0];
-
-  function getHeaderIndex(headerString) {
-    return sheetHeaders.indexOf(headerString);
-  }
   const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
-  const outOfStockList = [];
-  sheetValues.forEach((row) => {
-    if (row[getHeaderIndex("Cellar")] === 0 && row[getHeaderIndex("Online Store")] === 0) {
-      outOfStockList.push(row[getHeaderIndex("Title")].toString());
-    }
-  });
-  return outOfStockList;
+  return getOutOfStockList(sheetValues, sheetHeaders);
 }
