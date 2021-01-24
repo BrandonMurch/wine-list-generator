@@ -1,16 +1,6 @@
 function createWineList() {
-  const headers = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(
-    1,
-    1,
-    1,
-    -1
-  )[0];
-  const wineSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(
-    3,
-    1,
-    -1,
-    -1
-  );
+  const headers = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(1, 1, 1, -1)[0];
+  const wineSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
   const templateId = "12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80";
   const folderId = "1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U";
   const MAX_LINES = 60;
@@ -67,11 +57,7 @@ function createWineList() {
     ];
   }
 
-  const insertIntoTrie = function recursivelyCheckTrieHasBeenInitialisedAndInsertCuvee(
-    map,
-    stack,
-    cuvee
-  ) {
+  const insertIntoTrie = function recursivelyCheckTrieHasBeenInitialisedAndInsertCuvee(map, stack, cuvee) {
     let nodeName = stack.shift();
     if (stack.length === 0) {
       if (map[nodeName] === undefined) {
@@ -167,9 +153,7 @@ function createWineList() {
   function updateProgress() {
     writeCounter++;
     if (getProgressPercentage() >= percentage + 10) {
-      SpreadsheetApp.getActiveSpreadsheet().toast(
-        Math.round(getProgressPercentage()) + "% completed"
-      );
+      SpreadsheetApp.getActiveSpreadsheet().toast(Math.round(getProgressPercentage()) + "% completed");
       percentage = getProgressPercentage();
     }
   }
@@ -226,14 +210,7 @@ function createWineList() {
   }
 
   function getCountryOrder() {
-    return [
-      "France",
-      "Italy",
-      "Austria",
-      "Germany",
-      "South Africa",
-      "Australia",
-    ];
+    return ["France", "Italy", "Austria", "Germany", "South Africa", "Australia"];
   }
 
   function getKeys(type, data) {
@@ -272,15 +249,9 @@ function createWineList() {
     const table = templateBody.getChild(2).asTable();
     const template = {
       category: (textToInsert) => {
-        const template = templateBody
-          .getChild(0)
-          .copy()
-          .replaceText("{{category}}", textToInsert);
+        const template = templateBody.getChild(0).copy().replaceText("{{category}}", textToInsert);
 
-        template.replaceText(
-          "{{category_maceration}}",
-          textToInsert == "white & macerated" ? " ▴" : ""
-        );
+        template.replaceText("{{category_maceration}}", textToInsert == "white & macerated" ? " ▴" : "");
 
         return template;
       },
@@ -314,9 +285,7 @@ function createWineList() {
 
   function createNewWineListFile() {
     const folder = DriveApp.getFolderById(folderId);
-    const wineList = DocumentApp.create(
-      "Wine List " + new Date().toDateString()
-    );
+    const wineList = DocumentApp.create("Wine List " + new Date().toDateString());
     folder.addFile(DriveApp.getFileById(wineList.getId()));
     setTopAndBottomMargins(wineList);
     return wineList;
@@ -361,9 +330,7 @@ function createWineList() {
       .prompt("Please enter the url of the out of stock items")
       .getResponseText();
     if (promptResponse) {
-      const outOfStockId = SpreadsheetApp.openByUrl(
-        promptResponse.getResponseText()
-      ).getId();
+      const outOfStockId = SpreadsheetApp.openByUrl(promptResponse.getResponseText()).getId();
       return Sheets.Spreadsheets.Values.get(outOfStockId, "A:ZZ");
     }
   }
