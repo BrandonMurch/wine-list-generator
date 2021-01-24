@@ -26,12 +26,12 @@ function createWineList() {
   function getFormattedName(wine) {
     const nameCell = wine[getHeaderIndex("Name")];
     const vintage = nameCell.match(/\d{4}/) || "";
-    // RegExp: matches all words between single quotations
-    let name = nameCell.match(/(\')(.+)(\')/)[2];
+    // RegExp: matches all words between double quotations
+    let name = nameCell.match(/(?<=")(.+)(<=")/);
     // RegExp: matches all words between parenthesis
-    const size = nameCell.match(/(\()(.+)(\))/);
+    const size = nameCell.match(/(?<=\()(.+)(?=\))/);
     if (size) {
-      name += " (" + size[2] + ")";
+      name += " (" + size + ")";
     }
 
     return vintage + " " + name;
@@ -89,8 +89,15 @@ function createWineList() {
     }
   };
 
+  function shouldWineGoOnList(wine) {
+    if (wine[getHeaderIndex("Type")] == "not-wine" || wine[getHeaderIndex("Type")] == "fortified") {
+      return false;
+    }
+    return wine[getHeaderIndex("Wine List")];
+  }
+
   function loadWineIntoMapIfIncludedInWineList(wine, map) {
-    if (wine[getHeaderIndex("Wine List")]) {
+    if (shouldWineGoOnList(wine)) {
       readCounter++;
       const cuvee = createCuvee(wine);
       const stack = createStackForTrie(wine);
