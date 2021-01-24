@@ -1,12 +1,4 @@
 function createWineList() {
-  const promptResponse = SpreadsheetApp.getUi().prompt(
-    "Please enter the url of the out of stock items"
-  );
-  const outOfStockId = SpreadsheetApp.openByUrl(
-    promptResponse.getResponseText()
-  ).getId();
-  const outOfStock = Sheets.Spreadsheets.Values.get(outOfStockId, "A:Z");
-
   const headers = Sheets.Spreadsheets.Values.get(
     "1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo",
     "Input!A1:AT1"
@@ -38,7 +30,7 @@ function createWineList() {
 
   function createCuvee(wine) {
     const nameCell = wine[getHeaderIndex("Name")];
-    const vintage = nameCell.match(/\d{2,4}/) || "";
+    const vintage = nameCell.match(/\d{4}/) || "";
     let name = nameCell.match(/(\')(.+)(\')/)[2];
     const size = nameCell.match(/(\()(.+)(\))/);
     if (size) {
@@ -350,6 +342,17 @@ function createWineList() {
     }
   }
 
+  function getOutOfStockWines() {
+    const promptResponse = SpreadsheetApp.getUi().prompt(
+      "Please enter the url of the out of stock items"
+    );
+    const outOfStockId = SpreadsheetApp.openByUrl(
+      promptResponse.getResponseText()
+    ).getId();
+    return Sheets.Spreadsheets.Values.get(outOfStockId, "A:Z");
+  }
+
+  const outOfStockWines = getOutOfStockWines();
   const wines = loadWinesIntoHashMap();
   writeWinesToTemplate(wines);
 }
