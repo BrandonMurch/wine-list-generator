@@ -3,10 +3,10 @@ function createWineList() {
   const wineSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
   const templateId = "12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80";
   const folderId = "1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U";
-  const MAX_LINES = 60;
+  const MAX_LINES = 58;
   // Change these numbers if the font size changes.
   const CUVEE_SIZE = 9;
-  const COUNTRY_LINES = 30 / CUVEE_SIZE;
+  const COUNTRY_LINES = 18 / CUVEE_SIZE;
   const REGION_LINES = 27 / CUVEE_SIZE;
   const LINES_NEEDED = {
     // A new category should always be placed on a new page.
@@ -186,6 +186,7 @@ function createWineList() {
         appendPageBreak(writing);
         table = templates.table();
         const continuedRegion = templates.region(region + " cont'd");
+        pageLineCounter += REGION_LINES;
         table.appendTableRow(continuedRegion);
       }
       pageLineCounter += producers[producerName].length + 1;
@@ -209,7 +210,7 @@ function createWineList() {
   }
 
   function getCountryOrder() {
-    return ["France", "Italy", "Austria", "Germany", "South Africa", "Australia"];
+    return ["France", "Italy", "Austria", "Germany", "Australia", "South Africa"];
   }
 
   function getKeys(type, data) {
@@ -230,7 +231,9 @@ function createWineList() {
       }
       current[dataType] = key;
       const append = getAppendFunction(dataType);
-      append(key, writing, data[key]);
+      if (data[key]) {
+        append(key, writing, data[key]);
+      }
       if (dataTypeStack.length > 0 && data[key]) {
         appendNext(data[key], dataTypeStack, writing);
       }
