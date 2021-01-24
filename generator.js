@@ -90,13 +90,10 @@ function createWineList() {
   }
 
   function appendOnNewPageIfNeeded(part, writing) {
-    const { templates, current } = writing;
+    const { current } = writing;
     if (current[part]) {
       let textToInsert = current[part];
-      if (part == "region") {
-        textToInsert += " continued";
-        appendLineToDocument(templates.region(textToInsert));
-      } else {
+      if (part != "region") {
         const append = getAppendFunction(part);
         append(textToInsert, writing);
       }
@@ -133,7 +130,7 @@ function createWineList() {
     const paragraph = document.getBody().appendParagraph("");
     paragraph.addPositionedImage(image);
     correctImagePosition(paragraph.getPositionedImages()[0]);
-    setFontSizeOfParagraph(29, paragraph);
+    setFontSizeOfParagraph(18, paragraph);
     pageLineCounter += COUNTRY_LINES;
   }
 
@@ -161,16 +158,14 @@ function createWineList() {
   function appendProducer(producer, cuvees, templates, table) {
     const producerRow = templates.producer(producer);
     table.appendTableRow(producerRow);
-    pageLineCounter++;
     cuvees.forEach((cuvee) => {
       const cuveeRow = templates.cuvee(cuvee);
       table.appendTableRow(cuveeRow);
-      pageLineCounter++;
       updateProgress();
     });
   }
 
-  function willProducersFitOnPage(producer) {
+  function willProducerExtendToNextPage(producer) {
     return pageLineCounter > MAX_LINES - (producer.length + 1);
   }
 
@@ -180,20 +175,24 @@ function createWineList() {
 
   function appendRegion(region, writing, producers) {
     const { templates, document } = writing;
-    const table = templates.table();
+    let table = templates.table();
     const regionRow = templates.region(region);
     table.appendTableRow(regionRow);
-    pageLineCounter++;
-    const producerNames = Object.keys(producers);
+    pageLineCounter += REGION_LINES;
+    const producerNames = Object.keys(producers).sort();
     producerNames.forEach((producerName) => {
-      if (willProducersFitOnPage(producers[producerName])) {
+      if (willProducerExtendToNextPage(producers[producerName])) {
+        appendLineToDocument(table, document);
         appendPageBreak(writing);
+        table = templates.table();
+        const continuedRegion = templates.region(region + " cont'd");
+        table.appendTableRow(continuedRegion);
       }
+      pageLineCounter += producers[producerName].length + 1;
       appendProducer(producerName, producers[producerName], templates, table);
     });
     appendLineToDocument(table, document);
     setFontSizeOfParagraph(11, getLastChild(document));
-    pageLineCounter += REGION_LINES;
   }
 
   function getAppendFunction(type) {
