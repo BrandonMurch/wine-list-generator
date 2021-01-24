@@ -27,9 +27,9 @@ function createWineList() {
     const nameCell = wine[getHeaderIndex("Name")];
     const vintage = nameCell.match(/\d{4}/) || "";
     // RegExp: matches all words between double quotations
-    let name = nameCell.match(/(?<=")(.+)(<=")/);
+    let name = nameCell.match(/(?<=").+(?=")/);
     // RegExp: matches all words between parenthesis
-    const size = nameCell.match(/(?<=\()(.+)(?=\))/);
+    const size = nameCell.match(/(?<=\().+(?=\))/);
     if (size) {
       name += " (" + size + ")";
     }
@@ -179,9 +179,21 @@ function createWineList() {
     }
   }
 
+  function sortByName(a, b) {
+    const x = a.name.toLowerCase();
+    const y = b.name.toLowerCase();
+    if (x < y) {
+      return -1;
+    } else if (y < x) {
+      return 1;
+    }
+    return 0;
+  }
+
   function appendProducer(producer, cuvees, templates, table) {
     const producerRow = templates.producer(producer);
     table.appendTableRow(producerRow);
+    cuvees.sort(sortByName);
     cuvees.forEach((cuvee) => {
       const cuveeRow = templates.cuvee(cuvee);
       table.appendTableRow(cuveeRow);
