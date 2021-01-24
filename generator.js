@@ -31,6 +31,7 @@ function createWineList() {
     if (size) {
       name += " (" + size[2] + ")";
     }
+    SpreadsheetApp.getUi().alert(wine[getHeaderIndex("Grapes")].length);
     return {
       name: vintage + " " + name,
       grapes: wine[getHeaderIndex("Grapes")],
@@ -335,7 +336,7 @@ function createWineList() {
       .prompt("Please enter the url of the out of stock items")
       .getResponseText();
     if (promptResponse) {
-      const outOfStockId = SpreadsheetApp.openByUrl(promptResponse.getResponseText()).getId();
+      const outOfStockId = SpreadsheetApp.openByUrl(promptResponse).getId();
       return Sheets.Spreadsheets.Values.get(outOfStockId, "A:ZZ");
     }
   }
