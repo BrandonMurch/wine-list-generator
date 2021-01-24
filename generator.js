@@ -1,11 +1,15 @@
 function createWineList() {
-  const headers = Sheets.Spreadsheets.Values.get(
-    "1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo",
-    "Input!A1:AT1"
-  );
-  const wineSheet = Sheets.Spreadsheets.Values.get(
-    "1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo",
-    "Input!A3:AT1000"
+  const headers = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(
+    1,
+    1,
+    1,
+    -1
+  )[0];
+  const wineSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(
+    3,
+    1,
+    -1,
+    -1
   );
   const templateId = "12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80";
   const folderId = "1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U";
@@ -25,7 +29,7 @@ function createWineList() {
   let writeCounter = 0;
 
   function getHeaderIndex(headerString) {
-    return headers.values[0].indexOf(headerString);
+    return headers.indexOf(headerString);
   }
 
   function createCuvee(wine) {
@@ -92,8 +96,8 @@ function createWineList() {
 
   function loadWinesIntoHashMap() {
     const wineMap = {};
-    for (let i = 0; i < wineSheet.values.length; i++) {
-      loadWineIntoMapIfIncludedInWineList(wineSheet.values[i], wineMap);
+    for (let i = 0; i < wineSheet.length; i++) {
+      loadWineIntoMapIfIncludedInWineList(wineSheet[i], wineMap);
     }
     return wineMap;
   }
@@ -152,12 +156,15 @@ function createWineList() {
   }
 
   function formatPrice(price) {
-    return parseInt(price.replace("$", ""));
+    SpreadsheetApp.getActiveSpreadsheet().toast(price);
+    return parseInt(price);
   }
 
   function updateProgress() {
     writeCounter++;
-    Logger.log(Math.round((writeCounter / readCounter) * 100) + "% completed");
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      Math.round((writeCounter / readCounter) * 100) + "% completed"
+    );
   }
 
   function appendProducer(producer, cuvees, templates, table) {
