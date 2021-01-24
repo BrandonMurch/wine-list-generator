@@ -27,6 +27,7 @@ function createWineList() {
   let pageLineCounter = 0;
   let readCounter = 0;
   let writeCounter = 0;
+  let percentage = 0;
 
   function getHeaderIndex(headerString) {
     return headers.indexOf(headerString);
@@ -156,15 +157,21 @@ function createWineList() {
   }
 
   function formatPrice(price) {
-    SpreadsheetApp.getActiveSpreadsheet().toast(price);
     return parseInt(price);
+  }
+
+  function getProgressPercentage() {
+    return (writeCounter / readCounter) * 100;
   }
 
   function updateProgress() {
     writeCounter++;
-    SpreadsheetApp.getActiveSpreadsheet().toast(
-      Math.round((writeCounter / readCounter) * 100) + "% completed"
-    );
+    if (getProgressPercentage() >= percentage + 10) {
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        Math.round(getProgressPercentage()) + "% completed"
+      );
+      percentage = getProgressPercentage();
+    }
   }
 
   function appendProducer(producer, cuvees, templates, table) {
@@ -350,16 +357,19 @@ function createWineList() {
   }
 
   function getOutOfStockWines() {
-    const promptResponse = SpreadsheetApp.getUi().prompt(
-      "Please enter the url of the out of stock items"
-    );
-    const outOfStockId = SpreadsheetApp.openByUrl(
-      promptResponse.getResponseText()
-    ).getId();
-    return Sheets.Spreadsheets.Values.get(outOfStockId, "A:Z");
+    const promptResponse = SpreadsheetApp.getUi()
+      .prompt("Please enter the url of the out of stock items")
+      .getResponseText();
+    if (promptResponse) {
+      const outOfStockId = SpreadsheetApp.openByUrl(
+        promptResponse.getResponseText()
+      ).getId();
+      return Sheets.Spreadsheets.Values.get(outOfStockId, "A:ZZ");
+    }
   }
 
   const outOfStockWines = getOutOfStockWines();
   const wines = loadWinesIntoHashMap();
   writeWinesToTemplate(wines);
+  SpreadsheetApp.getActiveSpreadsheet().toast("100% completed");
 }
