@@ -30,9 +30,13 @@ function getHeaderIndex(headerString) {
 }
 
 function createCuvee(wine) {
-  const vintage = wine[getHeaderIndex("Name")].match(/\d{2,4}/) || ""
-  const name = wine[getHeaderIndex("Name")].match(/(\')(.+)(\')/)[2];
-  return {
+  const nameCell = wine[getHeaderIndex("Name")];
+  const vintage = nameCell.match(/\d{2,4}/) || ""
+  let name = nameCell.match(/(\')(.+)(\')/)[2];
+  const size = nameCell.match(/(\()(.+)(\))/);
+  if (size) {
+    name += " (" + size[2] + ")"
+  }  return {
     name: vintage + " " + name,
     grapes: wine[getHeaderIndex("Grapes")],
     price: wine[getHeaderIndex("Restaurant Price")],
