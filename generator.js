@@ -392,19 +392,11 @@ function loadOutOfStockWines() {
     return sheetHeaders.indexOf(headerString);
   }
   const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
-  let length = sheetValues.length;
-  let target = 2;
-  for (let i = 0; i < length; i++) {
-    if (sheetValues[i][getHeaderIndex("Cellar")] !== 0 || sheetValues[i][getHeaderIndex("Online Store")] !== 0) {
-      outOfStockSheet.deleteRow(target);
-    } else {
-      target++;
-    }
-  }
-
   const outOfStockList = [];
-  outOfStockSheet.getSheetValues(2, getHeaderIndex("Title") + 1, -1, 1).forEach((item) => {
-    outOfStockList.push(item.toString());
+  sheetValues.forEach((row) => {
+    if (row[getHeaderIndex("Cellar")] === 0 && row[getHeaderIndex("Online Store")] === 0) {
+      outOfStockList.push(row[getHeaderIndex("Title")].toString());
+    }
   });
   return outOfStockList;
 }
