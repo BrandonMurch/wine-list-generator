@@ -92,7 +92,8 @@ function createWineList() {
     if (
       wine[typeIndex] == "not-wine" ||
       wine[typeIndex] == "fortified" ||
-      wine[getHeaderIndex("Hide From Wine List")]
+      wine[getHeaderIndex("Hide From Wine List")] ||
+      wine[typeIndex].length === 0
     ) {
       return false;
     }
