@@ -1,8 +1,7 @@
 function createWineList() {
-  const headers = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(1, 1, 1, -1)[0];
-  const wineSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
-  const templateId = "12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80";
-  const folderId = "1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U";
+  const HEADERS = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(1, 1, 1, -1)[0];
+  const TEMPLATE_ID = "12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80";
+  const FOLDER_ID = "1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U";
   const MAX_LINES = 54;
   const CUVEE_SIZE = 9;
   const COUNTRY_LINES = 21 / CUVEE_SIZE;
@@ -19,7 +18,7 @@ function createWineList() {
   let percentage = 0;
 
   function getHeaderIndex(headerString) {
-    return headers.indexOf(headerString);
+    return HEADERS.indexOf(headerString);
   }
 
   function getFormattedName(wine) {
@@ -89,10 +88,17 @@ function createWineList() {
   };
 
   function shouldWineGoOnList(wine) {
-    if (wine[getHeaderIndex("Type")] == "not-wine" || wine[getHeaderIndex("Type")] == "fortified") {
+    const typeIndex = getHeaderIndex("Type");
+    if (
+      wine[typeIndex] == "not-wine" ||
+      wine[typeIndex] == "fortified" ||
+      wine[getHeaderIndex("Hide From Wine List")]
+    ) {
       return false;
     }
 
+    // The website still stores names in between single quotations, when this changes
+    // to double quotations, this line can be removed.
     const modifiedName = wine[getHeaderIndex("Name")].split('"').join("'");
     return !outOfStockWines.includes(modifiedName);
   }
@@ -106,6 +112,7 @@ function createWineList() {
 
   function loadWinesIntoHashMap() {
     const wineMap = {};
+    const wineSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
     for (let i = 0; i < wineSheet.length; i++) {
       if (shouldWineGoOnList(wineSheet[i])) {
         loadWineIntoMap(wineSheet[i], wineMap);
@@ -289,7 +296,7 @@ function createWineList() {
   }
 
   function loadTemplate() {
-    const templateBody = DocumentApp.openById(templateId).getBody().copy();
+    const templateBody = DocumentApp.openById(TEMPLATE_ID).getBody().copy();
     const table = templateBody.getChild(2).asTable();
     const template = {
       category: (textToInsert) => {
@@ -328,7 +335,7 @@ function createWineList() {
   }
 
   function createNewWineListFile() {
-    const folder = DriveApp.getFolderById(folderId);
+    const folder = DriveApp.getFolderById(FOLDER_ID);
     const wineList = DocumentApp.create("Wine List " + new Date().toDateString());
     folder.addFile(DriveApp.getFileById(wineList.getId()));
     setTopAndBottomMargins(wineList);
