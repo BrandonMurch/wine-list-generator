@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 function createWineList() {
   // Global Configurations
   const HEADERS = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(1, 1, 1, -1)[0];
@@ -27,7 +28,7 @@ function createWineList() {
     SpreadsheetApp.getUi().alert(message);
   }
 
-  function loadOutOfStockWines() {
+  function getOutOfStockWines() {
     toast('Loading out of stock wines...');
     function getTrueInventory(row, headers) {
       return parseInt(row[headers.indexOf('Cellar')], 10) + parseInt(row[headers.indexOf('Online Store')], 10);
@@ -47,7 +48,8 @@ function createWineList() {
       .prompt('Please enter the URL of the inventory sheet.')
       .getResponseText();
     if (!sheetUrl) {
-      throw new Error('URL was not entered.');
+      alert('URL was not entered. All wines will be considered in stock');
+      return [];
     }
 
     let outOfStockSheet;
@@ -288,7 +290,7 @@ function createWineList() {
         appendLineToDocument(table, document);
         appendPageBreak(writing);
         table = templates.table();
-        const continuedRegion = templates.region(`${region} cont'd`);
+        const continuedRegion = templates.region(`${region} cont.`);
         pageLineCounter += REGION_LINES;
         table.appendTableRow(continuedRegion);
       }
@@ -417,10 +419,8 @@ function createWineList() {
   }
 
   alert('Please stay on this sheet until the script has completed.');
-  const outOfStockWines = loadOutOfStockWines();
+  const outOfStockWines = getOutOfStockWines();
   const wines = loadWinesIntoHashMap(outOfStockWines);
   writeWinesToTemplate(wines);
   toast('100% completed');
 }
-
-export default createWineList;
