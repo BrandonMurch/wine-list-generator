@@ -16,7 +16,6 @@ function createWineList() {
     region: REGION_LINES + 2,
     country: COUNTRY_LINES + REGION_LINES + 2,
   };
-  let pageLineCounter = 0;
   let readCounter = 0;
   let writeCounter = 0;
   let percentage = 0;
@@ -189,7 +188,7 @@ function createWineList() {
 
   function appendPageBreak(writing) {
     writing.document.appendPageBreak();
-    pageLineCounter = 0;
+    writing.lineCounter = 0;
     const order = getStackOrder();
     order.forEach((part) => {
       appendOnNewPageIfNeeded(part, writing);
@@ -214,7 +213,7 @@ function createWineList() {
     paragraph.addPositionedImage(image);
     correctImagePosition(paragraph.getPositionedImages()[0]);
     setFontSizeOfParagraph(18, paragraph);
-    pageLineCounter += COUNTRY_LINES;
+    writing.lineCounter += COUNTRY_LINES;
   }
 
   function appendLineToDocument(line, document) {
@@ -268,8 +267,8 @@ function createWineList() {
     });
   }
 
-  function willProducerExtendToNextPage(producer) {
-    return pageLineCounter > MAX_LINES - (producer.length + 1);
+  function willProducerExtendToNextPage(producer, lineCounter) {
+    return lineCounter > MAX_LINES - (producer.length + 1);
   }
 
   function getLastChild(document) {
@@ -279,24 +278,26 @@ function createWineList() {
   function appendRegion(region, writing, producers) {
     const { templates, document } = writing;
     const producerNames = Object.keys(producers).sort();
-    if (willProducerExtendToNextPage(producers[producerNames[0]])) {
+    if (willProducerExtendToNextPage(producers[producerNames[0]], writing.lineCounter)) {
       appendPageBreak(writing);
     }
     let table = templates.table();
     const regionRow = templates.region(region);
     table.appendTableRow(regionRow);
-    pageLineCounter += REGION_LINES;
+    writing.lineCounter += REGION_LINES;
 
     producerNames.forEach((producerName, index) => {
-      if (index !== 0 && willProducerExtendToNextPage(producers[producerName])) {
+      if (index !== 0
+        && willProducerExtendToNextPage(producers[producerName], writing.lineCounter)
+      ) {
         appendLineToDocument(table, document);
         appendPageBreak(writing);
         table = templates.table();
         const continuedRegion = templates.region(`${region} cont.`);
-        pageLineCounter += REGION_LINES;
+        writing.lineCounter += REGION_LINES;
         table.appendTableRow(continuedRegion);
       }
-      pageLineCounter += producers[producerName].length + 1;
+      writing.lineCounter += producers[producerName].length + 1;
       appendProducer(producerName, producers[producerName], templates, table);
     });
     appendLineToDocument(table, document);
@@ -312,8 +313,8 @@ function createWineList() {
     return appendFunctions[type];
   };
 
-  function hasEndOfPageBeenReached(dataType) {
-    return pageLineCounter > (MAX_LINES - LINES_NEEDED[dataType]);
+  function hasEndOfPageBeenReached(dataType, lineCounter) {
+    return lineCounter > (MAX_LINES - LINES_NEEDED[dataType]);
   }
 
   function getCountryOrder() {
@@ -333,7 +334,7 @@ function createWineList() {
     const keys = getKeys(dataType, data);
     keys.forEach((key) => {
       if (data[key]) {
-        if (hasEndOfPageBeenReached(dataType)) {
+        if (hasEndOfPageBeenReached(dataType, writing.lineCounter)) {
           appendPageBreak(writing);
         }
         current[dataType] = key;
@@ -347,7 +348,7 @@ function createWineList() {
       current[dataType] = undefined;
       if (dataType === 'category') {
         document.appendPageBreak();
-        pageLineCounter = 0;
+        writing.lineCounter = 0;
       }
     });
     dataTypeStack.unshift(dataType);
@@ -413,6 +414,7 @@ function createWineList() {
       document: createNewWineListFile(),
       current: {},
       images: getCountryImages(),
+      lineCounter: 0,
     };
     const stackOrder = getStackOrder();
     appendNext(wines, stackOrder, writing);
