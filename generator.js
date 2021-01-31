@@ -1,7 +1,9 @@
 // eslint-disable-next-line no-unused-vars
 function createWineList() {
   // Global Configurations
-  const HEADERS = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(1, 1, 1, -1)[0];
+  const HEADERS = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetValues(1, 1, 1, -1)[0];
   const TEMPLATE_ID = '12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80';
   const FOLDER_ID = '1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U';
   const MAX_LINES = 54;
@@ -216,9 +218,9 @@ function createWineList() {
   }
 
   function appendLineToDocument(line, document) {
-    if (line.getType() === 'PARAGRAPH') {
+    if (line.getType() === DocumentApp.ElementType.PARAGRAPH) {
       document.appendParagraph(line);
-    } else if (line.getType() === 'TABLE') {
+    } else if (line.getType() === DocumentApp.ElementType.TABLE) {
       document.appendTable(line);
     }
   }
