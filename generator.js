@@ -21,9 +21,17 @@ function createWineList() {
     return HEADERS.indexOf(headerString);
   }
 
+  function toast(message) {
+      SpreadsheetApp.getActiveSpreadsheet().toast(message);
+  }
+
+  function alert(message) {
+    SpreadsheetApp.getUi().alert(message);
+  }
+
   function getFormattedName(wine) {
     const nameCell = wine[getHeaderIndex("Name")];
-    const vintage = nameCell.match(/\d{4}/) || "";
+    const vintage = nameCell.match(/\d{4}|NV/) || "";
     // RegExp: matches all words between double quotations
     let name = nameCell.match(/(?<=").+(?=")/);
     // RegExp: matches all words between parenthesis
@@ -89,18 +97,16 @@ function createWineList() {
 
   function shouldWineGoOnList(wine) {
     const typeIndex = getHeaderIndex("Type");
-    if (
-      wine[typeIndex] == "not-wine" ||
-      wine[typeIndex] == "fortified" ||
-      wine[getHeaderIndex("Hide From Wine List")] ||
-      wine[typeIndex].length === 0
-    ) {
+    if (wine[typeIndex] == "not-wine" 
+    || wine[typeIndex] == "fortified"
+    || wine[getHeaderIndex("Hide From Wine List")]
+    || wine[typeIndex].length === 0) {
       return false;
     }
 
     // The website still stores names in between single quotations, when this changes
     // to double quotations, this line can be removed.
-    const modifiedName = wine[getHeaderIndex("Name")].split('"').join("'");
+    const modifiedName = wine[getHeaderIndex("Name")].split("\"").join("'");
     return !outOfStockWines.includes(modifiedName);
   }
 
@@ -109,9 +115,11 @@ function createWineList() {
     const cuvee = createCuvee(wine);
     const stack = createStackForTrie(wine);
     insertIntoTrie(map, stack, cuvee);
+
   }
 
   function loadWinesIntoHashMap() {
+    toast("Reading wines from spreadsheet...")
     const wineMap = {};
     const wineSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
     for (let i = 0; i < wineSheet.length; i++) {
@@ -183,7 +191,7 @@ function createWineList() {
   function updateProgress() {
     writeCounter++;
     if (getProgressPercentage() >= percentage + 10) {
-      SpreadsheetApp.getActiveSpreadsheet().toast(Math.round(getProgressPercentage()) + "% completed");
+      SpreadsheetApp.getActiveSpreadsheet().toast(`Writing to template: ${Math.round(getProgressPercentage())}% completed`);
       percentage = getProgressPercentage();
     }
   }
@@ -255,7 +263,7 @@ function createWineList() {
   }
 
   function hasEndOfPageBeenReached(dataType) {
-    return pageLineCounter > MAX_LINES - LINES_NEEDED[dataType];
+    return pageLineCounter > (MAX_LINES - LINES_NEEDED[dataType]);
   }
 
   function getCountryOrder() {
@@ -375,24 +383,33 @@ function createWineList() {
     }
   }
 
+  alert("Please stay on this sheet until the script has completed.")
   const outOfStockWines = loadOutOfStockWines();
   const wines = loadWinesIntoHashMap();
   writeWinesToTemplate(wines);
-  SpreadsheetApp.getActiveSpreadsheet().toast("100% completed");
+  toast("100% completed");
 }
 
+
 function loadOutOfStockWines() {
+  toast("Loading out of stock wines...")
+  function getTrueInventory(row) {
+    return parseInt(row[sheetHeaders.indexOf("Cellar")]) + parseInt(row[sheetHeaders.indexOf("Online Store")]);
+  }
+
   function getOutOfStockList(sheet, headers) {
     const outOfStockList = [];
     sheetValues.forEach((row) => {
-      if (row[sheetHeaders.indexOf("Cellar")] === 0 && row[sheetHeaders.indexOf("Online Store")] === 0) {
+      if (getTrueInventory(row) <= 0) {
         outOfStockList.push(row[sheetHeaders.indexOf("Title")].toString());
-      }
+      } 
     });
-    return outOfStockList;
-  }
+  return outOfStockList;
+  } 
 
-  const sheetUrl = SpreadsheetApp.getUi().prompt("Please enter the URL of the inventory sheet.").getResponseText();
+  const sheetUrl = SpreadsheetApp.getUi()
+    .prompt("Please enter the URL of the inventory sheet.")
+    .getResponseText();
   if (!sheetUrl) {
     throw new Error("URL was not entered.");
   }
@@ -400,11 +417,12 @@ function loadOutOfStockWines() {
   let outOfStockSheet;
 
   try {
-    outOfStockSheet = SpreadsheetApp.openByUrl(sheetUrl);
+   outOfStockSheet = SpreadsheetApp.openByUrl(sheetUrl);
   } catch (error) {
-    throw new Error("URL not found");
+    throw new Error("URL not found")
   }
   const sheetHeaders = outOfStockSheet.getSheetValues(1, 1, 1, -1)[0];
   const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
   return getOutOfStockList(sheetValues, sheetHeaders);
+
 }
