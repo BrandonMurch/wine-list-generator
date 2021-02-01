@@ -63,10 +63,10 @@ function createWineList() {
     }
 
     function getOutOfStockList(sheet, headers) {
-      const outOfStockList = [];
+      const outOfStockList = {};
       sheet.forEach((row) => {
         if (getTrueInventory(row, headers) <= 0) {
-          outOfStockList.push(row[headers.indexOf('Title')].toString());
+          outOfStockList[row[headers.indexOf('Title')].toString()] = true;
         }
       });
       return outOfStockList;
@@ -188,7 +188,7 @@ function createWineList() {
       // to double quotations, this line can be removed.
       // trim() should be kept for any sneaky whitespace!
       const modifiedName = wine[getHeaderIndex('Name')].split('"').join("'").trim();
-      return !outOfStockWines.includes(modifiedName);
+      return !outOfStockWines[modifiedName];
     }
 
     function loadWine(wineMap, wine) {
