@@ -1,9 +1,6 @@
 // eslint-disable-next-line no-unused-vars
 function createWineList() {
   // Global Configurations
-  const HEADERS = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetValues(1, 1, 1, -1)[0];
   const TEMPLATE_ID = '12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80';
   const FOLDER_ID = '1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U';
   const MAX_LINES = 54;
@@ -64,111 +61,123 @@ function createWineList() {
     const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
     return getOutOfStockList(sheetValues, sheetHeaders);
   }
+  function loadWines(outOfStockWines) {
+    const headers = SpreadsheetApp
+      .getActiveSpreadsheet()
+      .getSheetValues(1, 1, 1, -1)[0];
 
-  function getHeaderIndex(headerString) {
-    return HEADERS.indexOf(headerString);
-  }
-
-  function getFormattedName(wine) {
-    const nameCell = wine[getHeaderIndex('Name')];
-    const vintage = nameCell.match(/\d{4}|NV/) || '';
-    // RegExp: matches all words between double quotations
-    let name = nameCell.match(/(?<=").+(?=")/);
-    // RegExp: matches all words between parenthesis
-    const size = nameCell.match(/(?<=\().+(?=\))/);
-    if (size) {
-      name += ` (${size})`;
+    function getHeaderIndex(headerString) {
+      return headers.indexOf(headerString);
     }
 
-    return `${vintage} ${name}`;
-  }
+    function createCuvee(wine) {
+      function getFormattedName() {
+        const nameCell = wine[getHeaderIndex('Name')];
+        const vintage = nameCell.match(/\d{4}|NV/) || '';
+        // RegExp: matches all words between double quotations
+        let name = nameCell.match(/(?<=").+(?=")/);
+        // RegExp: matches all words between parenthesis
+        const size = nameCell.match(/(?<=\().+(?=\))/);
+        if (size) {
+          name += ` (${size})`;
+        }
 
-  function getFormattedGrapes(wine) {
-    const grapes = wine[getHeaderIndex('Grapes')];
-    if (grapes.includes('/')) {
-      // RegExp: matches "/word" or "/word word" which is followed
-      // either by a "," or the end of line
-      return grapes.replace(/\/[\w ]+(?=(,|$))/g, '');
+        return `${vintage} ${name}`;
+      }
+
+      function getFormattedGrapes() {
+        const grapes = wine[getHeaderIndex('Grapes')];
+        if (grapes.includes('/')) {
+          // RegExp: matches "/word" or "/word word" which is followed
+          // either by a "," or the end of line
+          return grapes.replace(/\/[\w ]+(?=(,|$))/g, '');
+        }
+        return grapes;
+      }
+
+      readCounter += 1;
+
+      return {
+        name: getFormattedName(wine),
+        grapes: getFormattedGrapes(wine),
+        price: wine[getHeaderIndex('Restaurant Price')],
+        macerated: wine[getHeaderIndex('Type')] === 'orange',
+      };
     }
-    return grapes;
-  }
 
-  function createCuvee(wine) {
-    return {
-      name: getFormattedName(wine),
-      grapes: getFormattedGrapes(wine),
-      price: wine[getHeaderIndex('Restaurant Price')],
-      macerated: wine[getHeaderIndex('Type')] === 'orange',
+    function createStackForTrie(wine) {
+      function fixCategoryNames(category) {
+        if (category === 'white' || category === 'orange') {
+          return 'white & macerated';
+        } if (category === 'redwine') {
+          return 'red';
+        }
+        return category;
+      }
+      return [
+        fixCategoryNames(wine[getHeaderIndex('Type')]),
+        wine[getHeaderIndex('Country')],
+        wine[getHeaderIndex('Region')].toLowerCase(),
+        wine[getHeaderIndex('Producer')],
+      ];
+    }
+
+    const insertWine = function recursivelyCheckTrieHasBeenInitialisedAndInsertCuvee(
+      map, stack, cuvee,
+    ) {
+      const nodeName = stack.shift();
+      // Last insert will be a list of cuvees for a producer
+      if (stack.length === 0) {
+        if (map[nodeName] === undefined) {
+          map[nodeName] = [];
+        }
+        map[nodeName].push(cuvee);
+      } else {
+        if (map[nodeName] === undefined) {
+          map[nodeName] = {};
+        }
+        insertWine(map[nodeName], stack, cuvee);
+      }
     };
-  }
 
-  function fixCategoryNames(category) {
-    if (category === 'white' || category === 'orange') {
-      return 'white & macerated';
-    } if (category === 'redwine') {
-      return 'red';
-    }
-    return category;
-  }
-
-  function createStackForTrie(wine) {
-    return [
-      fixCategoryNames(wine[getHeaderIndex('Type')]),
-      wine[getHeaderIndex('Country')],
-      wine[getHeaderIndex('Region')].toLowerCase(),
-      wine[getHeaderIndex('Producer')],
-    ];
-  }
-
-  const insertIntoTrie = function recursivelyCheckTrieHasBeenInitialisedAndInsertCuvee(
-    map, stack, cuvee,
-  ) {
-    const nodeName = stack.shift();
-    if (stack.length === 0) {
-      if (map[nodeName] === undefined) {
-        map[nodeName] = [];
-      }
-      map[nodeName].push(cuvee);
-    } else {
-      if (map[nodeName] === undefined) {
-        map[nodeName] = {};
-      }
-      insertIntoTrie(map[nodeName], stack, cuvee);
-    }
-  };
-
-  function shouldWineGoOnList(wine, outOfStockWines) {
-    const typeIndex = getHeaderIndex('Type');
-    if (wine[typeIndex] === 'not-wine'
+    function shouldWineGoOnList(wine) {
+      const typeIndex = getHeaderIndex('Type');
+      if (wine[typeIndex] === 'not-wine'
     || wine[typeIndex] === 'fortified'
     || wine[getHeaderIndex('Hide From Wine List')]
     || wine[typeIndex].length === 0) {
-      return false;
+        return false;
+      }
+
+      // The website still stores names in between single quotations, when this changes
+      // to double quotations, this line can be removed.
+      const modifiedName = wine[getHeaderIndex('Name')].split('"').join("'");
+      return !outOfStockWines.includes(modifiedName);
     }
 
-    // The website still stores names in between single quotations, when this changes
-    // to double quotations, this line can be removed.
-    const modifiedName = wine[getHeaderIndex('Name')].split('"').join("'");
-    return !outOfStockWines.includes(modifiedName);
-  }
-
-  function loadWineIntoMap(wine, map) {
-    readCounter += 1;
-    const cuvee = createCuvee(wine);
-    const stack = createStackForTrie(wine);
-    insertIntoTrie(map, stack, cuvee);
-  }
-
-  function loadWinesIntoHashMap(outOfStockWines) {
-    toast('Reading wines from spreadsheet...');
-    const wineMap = {};
-    const wineSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
-    for (let i = 0; i < wineSheet.length; i++) {
-      if (shouldWineGoOnList(wineSheet[i], outOfStockWines)) {
-        loadWineIntoMap(wineSheet[i], wineMap);
+    function loadWine(wineMap, wine) {
+      if (shouldWineGoOnList(wine, outOfStockWines)) {
+        insertWine(
+          wineMap,
+          createCuvee(wine),
+          createStackForTrie(wine),
+        );
       }
     }
-    return wineMap;
+
+    function displayLoadProgress(current, total) {
+      if ((current / total) % 10 === 0) {
+        toast(`Reading wines from spreadsheet: ${current / total}% completed`);
+      }
+    }
+
+    const wines = {};
+    const spreadSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
+    for (let i = 0; i < spreadSheet.length; i++) {
+      loadWine(wines, spreadSheet[i], outOfStockWines);
+      displayLoadProgress(i, spreadSheet.length);
+    }
+    return wines;
   }
 
   function appendOnNewPageIfNeeded(part, writing) {
@@ -424,7 +433,7 @@ function createWineList() {
 
   alert('Please stay on this sheet until the script has completed.');
   const outOfStockWines = getOutOfStockWines();
-  const wines = loadWinesIntoHashMap(outOfStockWines);
+  const wines = loadWines(outOfStockWines);
   writeWinesToTemplate(wines);
   toast('100% completed');
 }
