@@ -238,6 +238,17 @@ function createWineList() {
       const {
         templates, document, updateProgress, images, current,
       } = writing;
+
+      function sortIgnoreCase(a, b) {
+        const x = a.toLowerCase();
+        const y = b.toLowerCase();
+        if (x < y) {
+          return -1;
+        } if (y < x) {
+          return 1;
+        }
+        return 0;
+      }
       function appendLineToDocument(line) {
         if (line.getType() === DocumentApp.ElementType.PARAGRAPH) {
           document.appendParagraph(line);
@@ -258,14 +269,7 @@ function createWineList() {
 
       function appendCuvee(cuvees, table) {
         function sortByName(a, b) {
-          const x = a.name.toLowerCase();
-          const y = b.name.toLowerCase();
-          if (x < y) {
-            return -1;
-          } if (y < x) {
-            return 1;
-          }
-          return 0;
+          return sortIgnoreCase(a.name, b.name);
         }
 
         cuvees
@@ -304,7 +308,7 @@ function createWineList() {
             writing.lineCounter += REGION_LINES;
             return table;
           }
-          const producerNames = Object.keys(producers).sort();
+          const producerNames = Object.keys(producers).sort(sortIgnoreCase);
           if (willProducerExtendToNextPage(producers[producerNames[0]], writing.lineCounter)) {
             appendPageBreak();
           }
