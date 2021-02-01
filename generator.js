@@ -5,10 +5,10 @@ function createWineList() {
   const FOLDER_ID = '1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U';
   const IMAGE_TOP_OFFSET = 15;
   const IMAGE_LEFT_OFFSET = 35;
-  const MAX_LINES = 50;
+  const MAX_LINES = 55;
   const CUVEE_SIZE = 9;
   const COUNTRY_LINES = 25 / CUVEE_SIZE;
-  const REGION_LINES = 19 / CUVEE_SIZE;
+  const REGION_LINES = 25 / CUVEE_SIZE;
   const LINES_NEEDED = {
     // A new category should always be placed on a new page.
     category: 0,
@@ -272,6 +272,9 @@ function createWineList() {
           .forEach((cuvee) => {
             const cuveeRow = templates.cuvee(cuvee);
             table.appendTableRow(cuveeRow);
+            if (cuvee.grapes.length > 50 || cuvee.name.length > 45) {
+              writing.lineCounter += 1;
+            }
             updateProgress();
           });
       }
@@ -360,6 +363,7 @@ function createWineList() {
         current[dataType] = key;
         if (data[key]) {
           if (willEndOfPageBeReached(dataType, writing.lineCounter)) {
+            Logger.log(key);
             append('pageBreak', writing);
           }
           append(dataType, writing, key, data[key]);
@@ -397,7 +401,7 @@ function createWineList() {
           const template = table.getRow(2).copy();
           template.replaceText('{{cuvee}}', name);
           template.replaceText('{{grapes}}', grapes);
-          template.replaceText('{{price}}', price);
+          template.replaceText('{{price}}', price.replace('$', ''));
           template.replaceText('{{cuvee_maceration}}', macerated ? ' ▴' : '');
           return template;
         },
