@@ -22,13 +22,13 @@ function createWineList() {
   }
 
   function toast(message) {
-    // SpreadsheetApp.getActiveSpreadsheet().toast(message);
-    Logger.log(message);
+    SpreadsheetApp.getActiveSpreadsheet().toast(message);
+    // Logger.log(message);
   }
 
   function alert(message) {
-    // SpreadsheetApp.getUi().alert(message);
-    Logger.log(message);
+    SpreadsheetApp.getUi().alert(message);
+    // Logger.log(message);
   }
 
   function getProgressTracker(total, getMessage) {
@@ -72,35 +72,34 @@ function createWineList() {
       return outOfStockList;
     }
 
-    return [];
-    // const sheetUrl = SpreadsheetApp.getUi()
-    //   .prompt('Please enter the URL of the inventory sheet.')
-    //   .getResponseText();
-    // if (!sheetUrl) {
-    //   alert('URL was not entered. All wines will be considered in stock');
-    //   return [];
-    // }
+    const sheetUrl = SpreadsheetApp.getUi()
+      .prompt('Please enter the URL of the inventory sheet.')
+      .getResponseText();
+    if (!sheetUrl) {
+      alert('URL was not entered. All wines will be considered in stock');
+      return [];
+    }
 
-    // let outOfStockSheet;
+    let outOfStockSheet;
 
-    // try {
-    //   outOfStockSheet = SpreadsheetApp.openByUrl(sheetUrl);
-    // } catch (error) {
-    //   throw new Error('URL not found');
-    // }
-    // const sheetHeaders = outOfStockSheet.getSheetValues(1, 1, 1, -1)[0];
-    // const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
-    // return getOutOfStockList(sheetValues, sheetHeaders);
+    try {
+      outOfStockSheet = SpreadsheetApp.openByUrl(sheetUrl);
+    } catch (error) {
+      throw new Error('URL not found');
+    }
+    const sheetHeaders = outOfStockSheet.getSheetValues(1, 1, 1, -1)[0];
+    const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
+    return getOutOfStockList(sheetValues, sheetHeaders);
   }
   function loadWines(outOfStockWines) {
-    // const headers = SpreadsheetApp
-    //   .getActiveSpreadsheet()
-    //   .getSheetValues(1, 1, 1, -1)[0];
-    const headers = Sheets.Spreadsheets.Values.get(
-      '1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo',
-      'Input!A1:AZ1',
-    )
-      .values[0];
+    const headers = SpreadsheetApp
+      .getActiveSpreadsheet()
+      .getSheetValues(1, 1, 1, -1)[0];
+    // const headers = Sheets.Spreadsheets.Values.get(
+    //   '1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo',
+    //   'Input!A1:AZ1',
+    // )
+      // .values[0];
     function getHeaderIndex(headerString) {
       return headers.indexOf(headerString);
     }
@@ -180,13 +179,15 @@ function createWineList() {
       if (wine[typeIndex] === 'not-wine'
     || wine[typeIndex] === 'fortified'
     || wine[getHeaderIndex('Hide From Wine List')]
-    || wine[typeIndex] === undefined) {
+    || wine[typeIndex] === undefined
+    || wine[typeIndex].length === 0) {
         return false;
       }
 
       // The website still stores names in between single quotations, when this changes
       // to double quotations, this line can be removed.
-      const modifiedName = wine[getHeaderIndex('Name')].split('"').join("'");
+      // trim() should be kept for any sneaky whitespace!
+      const modifiedName = wine[getHeaderIndex('Name')].split('"').join("'").trim();
       return !outOfStockWines.includes(modifiedName);
     }
 
@@ -201,16 +202,16 @@ function createWineList() {
     }
 
     const wines = {};
-    const spreadSheet = Sheets.Spreadsheets.Values.get(
-      '1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo',
-      'Input!A3:AZ',
-    )
-      .values;
+    const spreadSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
+    // const spreadSheet = Sheets.Spreadsheets.Values.get(
+    //   '1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo',
+    //   'Input!A3:AZ',
+    // )
+    //   .values;
     const updateProgress = getProgressTracker(
       spreadSheet.length,
       (progress) => (`Reading wines from spreadsheet: ${progress}% completed`),
     );
-    // const spreadSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
     spreadSheet.forEach((row) => {
       loadWine(wines, row);
       updateProgress();
@@ -360,19 +361,19 @@ function createWineList() {
       const dataType = dataTypeStack.shift();
       const keys = getKeys(dataType);
       keys.forEach((key) => {
-        current[dataType] = key;
         if (data[key]) {
           if (willEndOfPageBeReached(dataType, writing.lineCounter)) {
-            Logger.log(key);
             append('pageBreak', writing);
           }
+          current[dataType] = key;
           append(dataType, writing, key, data[key]);
-        }
-        appendNext(data[key], dataTypeStack, writing);
-        current[dataType] = undefined;
-        if (dataType === 'category') {
-          document.appendPageBreak();
-          writing.lineCounter = 0;
+
+          appendNext(data[key], dataTypeStack, writing);
+          current[dataType] = undefined;
+          if (dataType === 'category') {
+            document.appendPageBreak();
+            writing.lineCounter = 0;
+          }
         }
       });
       dataTypeStack.unshift(dataType);
@@ -401,7 +402,7 @@ function createWineList() {
           const template = table.getRow(2).copy();
           template.replaceText('{{cuvee}}', name);
           template.replaceText('{{grapes}}', grapes);
-          template.replaceText('{{price}}', price.replace('$', ''));
+          template.replaceText('{{price}}', Math.round(price));
           template.replaceText('{{cuvee_maceration}}', macerated ? ' ▴' : '');
           return template;
         },
