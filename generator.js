@@ -3,10 +3,12 @@ function createWineList() {
   // Global Configurations
   const TEMPLATE_ID = '12yfe6AowMOBML7pkagvPJT_5M-APyuiSzcCSJo3I_80';
   const FOLDER_ID = '1pTbUMcLlU2q-ZaLLouGSGRiYgdHjlN4U';
-  const MAX_LINES = 54;
+  const IMAGE_TOP_OFFSET = 15;
+  const IMAGE_LEFT_OFFSET = 35;
+  const MAX_LINES = 50;
   const CUVEE_SIZE = 9;
-  const COUNTRY_LINES = 21 / CUVEE_SIZE;
-  const REGION_LINES = 28 / CUVEE_SIZE;
+  const COUNTRY_LINES = 25 / CUVEE_SIZE;
+  const REGION_LINES = 19 / CUVEE_SIZE;
   const LINES_NEEDED = {
     // A new category should always be placed on a new page.
     category: 0,
@@ -20,14 +22,16 @@ function createWineList() {
   }
 
   function toast(message) {
-    SpreadsheetApp.getActiveSpreadsheet().toast(message);
+    // SpreadsheetApp.getActiveSpreadsheet().toast(message);
+    Logger.log(message);
   }
 
   function alert(message) {
-    SpreadsheetApp.getUi().alert(message);
+    // SpreadsheetApp.getUi().alert(message);
+    Logger.log(message);
   }
 
-  function ProgressTracker(total, getMessage) {
+  function getProgressTracker(total, getMessage) {
     let progress = 0;
     let lastAnnouncedPercentage = 0;
 
@@ -38,8 +42,8 @@ function createWineList() {
     function display() {
       const percentage = getProgressPercentage();
       if (percentage >= lastAnnouncedPercentage + 10) {
+        lastAnnouncedPercentage = percentage - (percentage % 10);
         toast(getMessage(percentage));
-        lastAnnouncedPercentage = percentage;
       }
     }
     return function update(amount) {
@@ -68,30 +72,35 @@ function createWineList() {
       return outOfStockList;
     }
 
-    const sheetUrl = SpreadsheetApp.getUi()
-      .prompt('Please enter the URL of the inventory sheet.')
-      .getResponseText();
-    if (!sheetUrl) {
-      alert('URL was not entered. All wines will be considered in stock');
-      return [];
-    }
+    return [];
+    // const sheetUrl = SpreadsheetApp.getUi()
+    //   .prompt('Please enter the URL of the inventory sheet.')
+    //   .getResponseText();
+    // if (!sheetUrl) {
+    //   alert('URL was not entered. All wines will be considered in stock');
+    //   return [];
+    // }
 
-    let outOfStockSheet;
+    // let outOfStockSheet;
 
-    try {
-      outOfStockSheet = SpreadsheetApp.openByUrl(sheetUrl);
-    } catch (error) {
-      throw new Error('URL not found');
-    }
-    const sheetHeaders = outOfStockSheet.getSheetValues(1, 1, 1, -1)[0];
-    const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
-    return getOutOfStockList(sheetValues, sheetHeaders);
+    // try {
+    //   outOfStockSheet = SpreadsheetApp.openByUrl(sheetUrl);
+    // } catch (error) {
+    //   throw new Error('URL not found');
+    // }
+    // const sheetHeaders = outOfStockSheet.getSheetValues(1, 1, 1, -1)[0];
+    // const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
+    // return getOutOfStockList(sheetValues, sheetHeaders);
   }
   function loadWines(outOfStockWines) {
-    const headers = SpreadsheetApp
-      .getActiveSpreadsheet()
-      .getSheetValues(1, 1, 1, -1)[0];
-
+    // const headers = SpreadsheetApp
+    //   .getActiveSpreadsheet()
+    //   .getSheetValues(1, 1, 1, -1)[0];
+    const headers = Sheets.Spreadsheets.Values.get(
+      '1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo',
+      'Input!A1:AZ1',
+    )
+      .values[0];
     function getHeaderIndex(headerString) {
       return headers.indexOf(headerString);
     }
@@ -124,8 +133,8 @@ function createWineList() {
       readCounter += 1;
 
       return {
-        name: getFormattedName(wine),
-        grapes: getFormattedGrapes(wine),
+        name: getFormattedName(),
+        grapes: getFormattedGrapes(),
         price: wine[getHeaderIndex('Restaurant Price')],
         macerated: wine[getHeaderIndex('Type')] === 'orange',
       };
@@ -171,7 +180,7 @@ function createWineList() {
       if (wine[typeIndex] === 'not-wine'
     || wine[typeIndex] === 'fortified'
     || wine[getHeaderIndex('Hide From Wine List')]
-    || wine[typeIndex].length === 0) {
+    || wine[typeIndex] === undefined) {
         return false;
       }
 
@@ -182,33 +191,36 @@ function createWineList() {
     }
 
     function loadWine(wineMap, wine) {
-      if (shouldWineGoOnList(wine, outOfStockWines)) {
+      if (shouldWineGoOnList(wine)) {
         insertWine(
           wineMap,
-          createCuvee(wine),
           createStackForTrie(wine),
+          createCuvee(wine),
         );
       }
     }
 
-    function displayLoadProgress(current, total) {
-      if ((current / total) % 10 === 0) {
-        toast(`Reading wines from spreadsheet: ${current / total}% completed`);
-      }
-    }
-
     const wines = {};
-    const spreadSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
-    for (let i = 0; i < spreadSheet.length; i++) {
-      loadWine(wines, spreadSheet[i], outOfStockWines);
-      displayLoadProgress(i, spreadSheet.length);
-    }
+    const spreadSheet = Sheets.Spreadsheets.Values.get(
+      '1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo',
+      'Input!A3:AZ',
+    )
+      .values;
+    const updateProgress = getProgressTracker(
+      spreadSheet.length,
+      (progress) => (`Reading wines from spreadsheet: ${progress}% completed`),
+    );
+    // const spreadSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
+    spreadSheet.forEach((row) => {
+      loadWine(wines, row);
+      updateProgress();
+    });
     return wines;
   }
   function writeWines(wines) {
     function correctImagePosition(image) {
-      image.setLeftOffset(35);
-      image.setTopOffset(40);
+      image.setLeftOffset(IMAGE_LEFT_OFFSET);
+      image.setTopOffset(IMAGE_TOP_OFFSET);
     }
 
     function setFontSizeOfParagraph(size, paragraph) {
@@ -221,13 +233,10 @@ function createWineList() {
       return lineCounter > MAX_LINES - (producer.length + 1);
     }
 
-    const append = (type, {
-      templates, document, images, current, ...writing
-    }, name, data) => {
-      const progress = new ProgressTracker(
-        readCounter,
-        (percentage) => `Writing to template: ${percentage}% completed`,
-      );
+    const append = (type, writing, name, data) => {
+      const {
+        templates, document, updateProgress, images, current,
+      } = writing;
       function appendLineToDocument(line) {
         if (line.getType() === DocumentApp.ElementType.PARAGRAPH) {
           document.appendParagraph(line);
@@ -263,13 +272,13 @@ function createWineList() {
           .forEach((cuvee) => {
             const cuveeRow = templates.cuvee(cuvee);
             table.appendTableRow(cuveeRow);
-            progress.update();
+            updateProgress();
           });
       }
 
       function appendProducer(cuvees, producerName, passedInTable, createNewTable) {
         let table = passedInTable;
-        if (table.getNumChildren > 1
+        if (table.getNumChildren() > 1
         && willProducerExtendToNextPage(cuvees, writing.lineCounter)
         ) {
           table = createNewTable();
@@ -285,14 +294,15 @@ function createWineList() {
           let table = templates.table();
           function createNewTable() {
             appendLineToDocument(table);
-            appendPageBreak(writing);
+            appendPageBreak();
             table = templates.table();
             table.appendTableRow(templates.region(`${region} cont.`));
             writing.lineCounter += REGION_LINES;
+            return table;
           }
           const producerNames = Object.keys(producers).sort();
           if (willProducerExtendToNextPage(producers[producerNames[0]], writing.lineCounter)) {
-            appendPageBreak(writing);
+            appendPageBreak();
           }
 
           const regionRow = templates.region(region);
@@ -310,7 +320,7 @@ function createWineList() {
           const paragraph = document.getBody().appendParagraph('');
           paragraph.addPositionedImage(image);
           correctImagePosition(paragraph.getPositionedImages()[0]);
-          setFontSizeOfParagraph(18, paragraph);
+          setFontSizeOfParagraph(16, paragraph);
           writing.lineCounter += COUNTRY_LINES;
         },
         category: (category) => {
@@ -345,7 +355,7 @@ function createWineList() {
       }
       const { document, current } = writing;
       const dataType = dataTypeStack.shift();
-      const keys = getKeys(dataType, data);
+      const keys = getKeys(dataType);
       keys.forEach((key) => {
         current[dataType] = key;
         if (data[key]) {
@@ -426,19 +436,21 @@ function createWineList() {
       return images;
     }
 
-    return () => {
-      const writing = {
-        templates: loadTemplate(),
-        document: createNewWineListFile(),
-        current: {},
-        images: getCountryImages(),
-        lineCounter: 0,
-      };
-      const stackOrder = getStackOrder();
-      appendNext(wines, stackOrder, writing);
-      writing.document.getBody().appendPageBreak();
-      writing.document.saveAndClose();
+    const writing = {
+      templates: loadTemplate(),
+      document: createNewWineListFile(),
+      current: {},
+      images: getCountryImages(),
+      lineCounter: 0,
+      updateProgress: getProgressTracker(
+        readCounter,
+        (percentage) => (`Writing to template: ${percentage}% completed`),
+      ),
     };
+    const stackOrder = getStackOrder();
+    appendNext(wines, stackOrder, writing);
+    writing.document.getBody().appendPageBreak();
+    writing.document.saveAndClose();
   }
 
   alert('Please stay on this sheet until the script has completed.');
