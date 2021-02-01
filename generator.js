@@ -14,9 +14,10 @@ function createWineList() {
     country: COUNTRY_LINES + REGION_LINES + 2,
   };
   let readCounter = 0;
-  let writeCounter = 0;
-  let percentage = 0;
-  let getAppendFunction;
+
+  function getStackOrder() {
+    return ['category', 'country', 'region'];
+  }
 
   function toast(message) {
     SpreadsheetApp.getActiveSpreadsheet().toast(message);
@@ -24,6 +25,31 @@ function createWineList() {
 
   function alert(message) {
     SpreadsheetApp.getUi().alert(message);
+  }
+
+  function ProgressTracker(total, getMessage) {
+    let progress = 0;
+    let lastAnnouncedPercentage = 0;
+
+    function getProgressPercentage() {
+      return Math.round((progress / total) * 100);
+    }
+
+    function display() {
+      const percentage = getProgressPercentage();
+      if (percentage >= lastAnnouncedPercentage + 10) {
+        toast(getMessage(percentage));
+        lastAnnouncedPercentage = percentage;
+      }
+    }
+    return function update(amount) {
+      if (amount === undefined) {
+        progress += 1;
+      } else {
+        progress += amount;
+      }
+      display();
+    };
   }
 
   function getOutOfStockWines() {
@@ -179,261 +205,245 @@ function createWineList() {
     }
     return wines;
   }
-
-  function appendOnNewPageIfNeeded(part, writing) {
-    const { current } = writing;
-    if (current[part]) {
-      const textToInsert = current[part];
-      if (part !== 'region') {
-        const append = getAppendFunction(part);
-        append(textToInsert, writing);
-      }
+  function writeWines(wines) {
+    function correctImagePosition(image) {
+      image.setLeftOffset(35);
+      image.setTopOffset(40);
     }
-  }
 
-  function getStackOrder() {
-    return ['category', 'country', 'region'];
-  }
-
-  function appendPageBreak(writing) {
-    writing.document.appendPageBreak();
-    writing.lineCounter = 0;
-    const order = getStackOrder();
-    order.forEach((part) => {
-      appendOnNewPageIfNeeded(part, writing);
-    });
-  }
-
-  function correctImagePosition(image) {
-    image.setLeftOffset(35);
-    image.setTopOffset(30);
-  }
-
-  function setFontSizeOfParagraph(size, paragraph) {
-    const style = {};
-    style[DocumentApp.Attribute.FONT_SIZE] = size;
-    paragraph.setAttributes(style);
-  }
-
-  function appendCountryImage(country, writing) {
-    const { document } = writing;
-    const image = writing.images[country];
-    const paragraph = document.getBody().appendParagraph('');
-    paragraph.addPositionedImage(image);
-    correctImagePosition(paragraph.getPositionedImages()[0]);
-    setFontSizeOfParagraph(18, paragraph);
-    writing.lineCounter += COUNTRY_LINES;
-  }
-
-  function appendLineToDocument(line, document) {
-    if (line.getType() === DocumentApp.ElementType.PARAGRAPH) {
-      document.appendParagraph(line);
-    } else if (line.getType() === DocumentApp.ElementType.TABLE) {
-      document.appendTable(line);
+    function setFontSizeOfParagraph(size, paragraph) {
+      const style = {};
+      style[DocumentApp.Attribute.FONT_SIZE] = size;
+      paragraph.setAttributes(style);
     }
-  }
 
-  function appendCategory(category, { templates, document }) {
-    const template = templates.category(category);
-    appendLineToDocument(template, document);
-  }
-
-  function formatPrice(price) {
-    return parseInt(price, 10);
-  }
-
-  function getProgressPercentage() {
-    return (writeCounter / readCounter) * 100;
-  }
-
-  function updateProgress() {
-    writeCounter += 1;
-    if (getProgressPercentage() >= percentage + 10) {
-      SpreadsheetApp.getActiveSpreadsheet().toast(`Writing to template: ${Math.round(getProgressPercentage())}% completed`);
-      percentage = getProgressPercentage();
+    function willProducerExtendToNextPage(producer, lineCounter) {
+      return lineCounter > MAX_LINES - (producer.length + 1);
     }
-  }
 
-  function sortByName(a, b) {
-    const x = a.name.toLowerCase();
-    const y = b.name.toLowerCase();
-    if (x < y) {
-      return -1;
-    } if (y < x) {
-      return 1;
-    }
-    return 0;
-  }
-
-  function appendProducer(producer, cuvees, templates, table) {
-    const producerRow = templates.producer(producer);
-    table.appendTableRow(producerRow);
-    cuvees.sort(sortByName);
-    cuvees.forEach((cuvee) => {
-      const cuveeRow = templates.cuvee(cuvee);
-      table.appendTableRow(cuveeRow);
-      updateProgress();
-    });
-  }
-
-  function willProducerExtendToNextPage(producer, lineCounter) {
-    return lineCounter > MAX_LINES - (producer.length + 1);
-  }
-
-  function getLastChild(document) {
-    return document.getBody().getChild(document.getBody().getNumChildren() - 1);
-  }
-
-  function appendRegion(region, writing, producers) {
-    const { templates, document } = writing;
-    const producerNames = Object.keys(producers).sort();
-    if (willProducerExtendToNextPage(producers[producerNames[0]], writing.lineCounter)) {
-      appendPageBreak(writing);
-    }
-    let table = templates.table();
-    const regionRow = templates.region(region);
-    table.appendTableRow(regionRow);
-    writing.lineCounter += REGION_LINES;
-
-    producerNames.forEach((producerName, index) => {
-      if (index !== 0
-        && willProducerExtendToNextPage(producers[producerName], writing.lineCounter)
-      ) {
-        appendLineToDocument(table, document);
-        appendPageBreak(writing);
-        table = templates.table();
-        const continuedRegion = templates.region(`${region} cont.`);
-        writing.lineCounter += REGION_LINES;
-        table.appendTableRow(continuedRegion);
-      }
-      writing.lineCounter += producers[producerName].length + 1;
-      appendProducer(producerName, producers[producerName], templates, table);
-    });
-    appendLineToDocument(table, document);
-    setFontSizeOfParagraph(11, getLastChild(document));
-  }
-
-  getAppendFunction = (type) => {
-    const appendFunctions = {
-      region: appendRegion,
-      country: appendCountryImage,
-      category: appendCategory,
-    };
-    return appendFunctions[type];
-  };
-
-  function hasEndOfPageBeenReached(dataType, lineCounter) {
-    return lineCounter > (MAX_LINES - LINES_NEEDED[dataType]);
-  }
-
-  function getCountryOrder() {
-    return ['France', 'Italy', 'Austria', 'Germany', 'Australia', 'South Africa'];
-  }
-
-  function getKeys(type, data) {
-    if (type === 'country') {
-      return getCountryOrder();
-    }
-    return Object.keys(data).sort();
-  }
-
-  function appendNext(data, dataTypeStack, writing) {
-    const { document, current } = writing;
-    const dataType = dataTypeStack.shift();
-    const keys = getKeys(dataType, data);
-    keys.forEach((key) => {
-      if (data[key]) {
-        if (hasEndOfPageBeenReached(dataType, writing.lineCounter)) {
-          appendPageBreak(writing);
+    const append = (type, {
+      templates, document, images, current, ...writing
+    }, name, data) => {
+      const progress = new ProgressTracker(
+        readCounter,
+        (percentage) => `Writing to template: ${percentage}% completed`,
+      );
+      function appendLineToDocument(line) {
+        if (line.getType() === DocumentApp.ElementType.PARAGRAPH) {
+          document.appendParagraph(line);
+        } else if (line.getType() === DocumentApp.ElementType.TABLE) {
+          document.appendTable(line);
         }
-        current[dataType] = key;
-        const append = getAppendFunction(dataType);
-
-        append(key, writing, data[key]);
       }
-      if (dataTypeStack.length > 0 && data[key]) {
-        appendNext(data[key], dataTypeStack, writing);
-      }
-      current[dataType] = undefined;
-      if (dataType === 'category') {
+      function appendPageBreak() {
         document.appendPageBreak();
         writing.lineCounter = 0;
+        const order = getStackOrder();
+        order.forEach((part) => {
+          if (current[part] && part !== 'region') {
+            append(part, writing, current[part]);
+          }
+        });
       }
-    });
-    dataTypeStack.unshift(dataType);
-  }
 
-  function loadTemplate() {
-    const templateBody = DocumentApp.openById(TEMPLATE_ID).getBody().copy();
-    const table = templateBody.getChild(2).asTable();
-    const templates = {
-      category: (textToInsert) => {
-        const template = templateBody.getChild(0).copy().asParagraph().replaceText('{{category}}', textToInsert);
+      function appendCuvee(cuvees, table) {
+        function sortByName(a, b) {
+          const x = a.name.toLowerCase();
+          const y = b.name.toLowerCase();
+          if (x < y) {
+            return -1;
+          } if (y < x) {
+            return 1;
+          }
+          return 0;
+        }
 
-        template.asParagraph().replaceText('{{category_maceration}}', textToInsert === 'white & macerated' ? ' ▴' : '');
+        cuvees
+          .sort(sortByName)
+          .forEach((cuvee) => {
+            const cuveeRow = templates.cuvee(cuvee);
+            table.appendTableRow(cuveeRow);
+            progress.update();
+          });
+      }
 
-        return template;
-      },
-      region: (textToInsert) => table.getRow(0).copy().replaceText('{{region}}', textToInsert),
-      producer: (textToInsert) => table.getRow(1).copy().replaceText('{{producer}}', textToInsert),
-      cuvee: ({
-        name, grapes, price, macerated,
-      }) => {
-        const template = table.getRow(2).copy();
-        template.replaceText('{{cuvee}}', name);
-        template.replaceText('{{grapes}}', grapes);
-        template.replaceText('{{price}}', formatPrice(price).toString());
-        template.replaceText('{{cuvee_maceration}}', macerated ? ' ▴' : '');
-        return template;
-      },
-      table: () => table.copy().clear(),
+      function appendProducer(cuvees, producerName, passedInTable, createNewTable) {
+        let table = passedInTable;
+        if (table.getNumChildren > 1
+        && willProducerExtendToNextPage(cuvees, writing.lineCounter)
+        ) {
+          table = createNewTable();
+        }
+        writing.lineCounter += cuvees.length + 1;
+        const producerRow = templates.producer(producerName);
+        table.appendTableRow(producerRow);
+        appendCuvee(cuvees, table);
+      }
+
+      const appendFunctions = {
+        region: (region, producers) => {
+          let table = templates.table();
+          function createNewTable() {
+            appendLineToDocument(table);
+            appendPageBreak(writing);
+            table = templates.table();
+            table.appendTableRow(templates.region(`${region} cont.`));
+            writing.lineCounter += REGION_LINES;
+          }
+          const producerNames = Object.keys(producers).sort();
+          if (willProducerExtendToNextPage(producers[producerNames[0]], writing.lineCounter)) {
+            appendPageBreak(writing);
+          }
+
+          const regionRow = templates.region(region);
+          table.appendTableRow(regionRow);
+          writing.lineCounter += REGION_LINES;
+
+          producerNames.forEach((producerName) => {
+            appendProducer(producers[producerName], producerName, table, createNewTable);
+          });
+          appendLineToDocument(table);
+          setFontSizeOfParagraph(11, document.getLastChild());
+        },
+        country: (country) => {
+          const image = images[country];
+          const paragraph = document.getBody().appendParagraph('');
+          paragraph.addPositionedImage(image);
+          correctImagePosition(paragraph.getPositionedImages()[0]);
+          setFontSizeOfParagraph(18, paragraph);
+          writing.lineCounter += COUNTRY_LINES;
+        },
+        category: (category) => {
+          appendLineToDocument(
+            templates.category(category),
+          );
+        },
+        pageBreak: appendPageBreak,
+      };
+
+      return appendFunctions[type](name, data);
     };
-    return templates;
-  }
 
-  function setTopAndBottomMargins(document) {
-    const style = {};
-    style[DocumentApp.Attribute.MARGIN_BOTTOM] = 45;
-    style[DocumentApp.Attribute.MARGIN_TOP] = 45;
-    document.getBody().setAttributes(style);
-  }
+    function willEndOfPageBeReached(dataType, lineCounter) {
+      return lineCounter > (MAX_LINES - LINES_NEEDED[dataType]);
+    }
 
-  function createNewWineListFile() {
-    const folder = DriveApp.getFolderById(FOLDER_ID);
-    const wineList = DocumentApp.create(`Wine List ${new Date().toDateString()}`);
-    folder.addFile(DriveApp.getFileById(wineList.getId()));
-    setTopAndBottomMargins(wineList);
-    return wineList;
-  }
+    function getCountryOrder() {
+      return ['France', 'Italy', 'Austria', 'Germany', 'Australia', 'South Africa'];
+    }
 
-  function getCountryImages() {
-    const countries = getCountryOrder();
-    const images = {};
-    countries.forEach((country) => {
-      images[country] = DriveApp.getFilesByName(`${country}.png`)
-        .next()
-        .getBlob();
-    });
-    return images;
-  }
+    function appendNext(data, dataTypeStack, writing) {
+      function getKeys(type) {
+        if (type === 'country') {
+          return getCountryOrder();
+        }
+        return Object.keys(data).sort();
+      }
 
-  function writeWinesToTemplate(wines) {
-    const writing = {
-      templates: loadTemplate(),
-      document: createNewWineListFile(),
-      current: {},
-      images: getCountryImages(),
-      lineCounter: 0,
+      if (!data || dataTypeStack.length === 0) {
+        return;
+      }
+      const { document, current } = writing;
+      const dataType = dataTypeStack.shift();
+      const keys = getKeys(dataType, data);
+      keys.forEach((key) => {
+        current[dataType] = key;
+        if (data[key]) {
+          if (willEndOfPageBeReached(dataType, writing.lineCounter)) {
+            append('pageBreak', writing);
+          }
+          append(dataType, writing, key, data[key]);
+        }
+        appendNext(data[key], dataTypeStack, writing);
+        current[dataType] = undefined;
+        if (dataType === 'category') {
+          document.appendPageBreak();
+          writing.lineCounter = 0;
+        }
+      });
+      dataTypeStack.unshift(dataType);
+    }
+
+    function loadTemplate() {
+      const templateBody = DocumentApp.openById(TEMPLATE_ID).getBody().copy();
+      const table = templateBody.getChild(2).asTable();
+      return {
+        category: (textToInsert) => {
+          const template = templateBody
+            .getChild(0)
+            .copy().asParagraph()
+            .replaceText('{{category}}', textToInsert);
+
+          template.asParagraph()
+            .replaceText('{{category_maceration}}', textToInsert === 'white & macerated' ? ' ▴' : '');
+
+          return template;
+        },
+        region: (textToInsert) => table.getRow(0).copy().replaceText('{{region}}', textToInsert),
+        producer: (textToInsert) => table.getRow(1).copy().replaceText('{{producer}}', textToInsert),
+        cuvee: ({
+          name, grapes, price, macerated,
+        }) => {
+          const template = table.getRow(2).copy();
+          template.replaceText('{{cuvee}}', name);
+          template.replaceText('{{grapes}}', grapes);
+          template.replaceText('{{price}}', price);
+          template.replaceText('{{cuvee_maceration}}', macerated ? ' ▴' : '');
+          return template;
+        },
+        table: () => table.copy().clear(),
+      };
+    }
+
+    function setTopAndBottomMargins(document) {
+      const style = {};
+      style[DocumentApp.Attribute.MARGIN_BOTTOM] = 45;
+      style[DocumentApp.Attribute.MARGIN_TOP] = 45;
+      document.getBody().setAttributes(style);
+    }
+
+    function createNewWineListFile() {
+      const folder = DriveApp.getFolderById(FOLDER_ID);
+      const wineList = DocumentApp.create(`Wine List ${new Date().toDateString()}`);
+      folder.addFile(DriveApp.getFileById(wineList.getId()));
+      setTopAndBottomMargins(wineList);
+      wineList.getLastChild = () => (
+        wineList.getBody().getChild(
+          wineList.getBody().getNumChildren() - 1,
+        )
+      );
+      return wineList;
+    }
+
+    function getCountryImages() {
+      const countries = getCountryOrder();
+      const images = {};
+      countries.forEach((country) => {
+        images[country] = DriveApp.getFilesByName(`${country}.png`)
+          .next()
+          .getBlob();
+      });
+      return images;
+    }
+
+    return () => {
+      const writing = {
+        templates: loadTemplate(),
+        document: createNewWineListFile(),
+        current: {},
+        images: getCountryImages(),
+        lineCounter: 0,
+      };
+      const stackOrder = getStackOrder();
+      appendNext(wines, stackOrder, writing);
+      writing.document.getBody().appendPageBreak();
+      writing.document.saveAndClose();
     };
-    const stackOrder = getStackOrder();
-    appendNext(wines, stackOrder, writing);
-    writing.document.getBody().appendPageBreak();
-    writing.document.saveAndClose();
   }
 
   alert('Please stay on this sheet until the script has completed.');
   const outOfStockWines = getOutOfStockWines();
   const wines = loadWines(outOfStockWines);
-  writeWinesToTemplate(wines);
+  writeWines(wines);
   toast('100% completed');
 }
