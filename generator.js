@@ -21,14 +21,16 @@ function createWineList() {
     return ['category', 'country', 'region'];
   }
 
+  function getCountryOrder() {
+    return ['France', 'Italy', 'Austria', 'Germany', 'Australia', 'South Africa'];
+  }
+
   function toast(message) {
     SpreadsheetApp.getActiveSpreadsheet().toast(message);
-    // Logger.log(message);
   }
 
   function alert(message) {
     SpreadsheetApp.getUi().alert(message);
-    // Logger.log(message);
   }
 
   function getProgressTracker(total, getMessage) {
@@ -85,7 +87,7 @@ function createWineList() {
     try {
       outOfStockSheet = SpreadsheetApp.openByUrl(sheetUrl);
     } catch (error) {
-      throw new Error('URL not found');
+      throw new Error('URL not found. You might not have the correct permissions to view it.');
     }
     const sheetHeaders = outOfStockSheet.getSheetValues(1, 1, 1, -1)[0];
     const sheetValues = outOfStockSheet.getSheetValues(2, 1, -1, -1);
@@ -95,11 +97,6 @@ function createWineList() {
     const headers = SpreadsheetApp
       .getActiveSpreadsheet()
       .getSheetValues(1, 1, 1, -1)[0];
-    // const headers = Sheets.Spreadsheets.Values.get(
-    //   '1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo',
-    //   'Input!A1:AZ1',
-    // )
-      // .values[0];
     function getHeaderIndex(headerString) {
       return headers.indexOf(headerString);
     }
@@ -203,11 +200,6 @@ function createWineList() {
 
     const wines = {};
     const spreadSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetValues(3, 1, -1, -1);
-    // const spreadSheet = Sheets.Spreadsheets.Values.get(
-    //   '1xWWHhLTvCj-OA1MBp7dDFetp4vCY7oup4KP68IVmmUo',
-    //   'Input!A3:AZ',
-    // )
-    //   .values;
     const updateProgress = getProgressTracker(
       spreadSheet.length,
       (progress) => (`Reading wines from spreadsheet: ${progress}% completed`),
@@ -344,10 +336,6 @@ function createWineList() {
 
     function willEndOfPageBeReached(dataType, lineCounter) {
       return lineCounter > (MAX_LINES - LINES_NEEDED[dataType]);
-    }
-
-    function getCountryOrder() {
-      return ['France', 'Italy', 'Austria', 'Germany', 'Australia', 'South Africa'];
     }
 
     function appendNext(data, dataTypeStack, writing) {
